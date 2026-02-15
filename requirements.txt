@@ -3,4 +3,4 @@ streamlit-drawable-canvas
 numpy
 Pillow
 requests
-s
+
