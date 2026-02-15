@@ -3,71 +3,60 @@ from streamlit_drawable_canvas import st_canvas
 import numpy as np
 from PIL import Image
 import os
+import base64
+from io import BytesIO
 
-# --- 1. Math Function ---
+# --- 1. Math & Encoding ---
 def calculate_dice(canvas_data, gt_mask):
-    """Calculates overlap between drawing and ground truth."""
     student_mask = (canvas_data[:, :, 3] > 0).astype(np.uint8)
     gt_binary = (np.array(gt_mask.convert("L")) > 0).astype(np.uint8)
     intersection = np.sum(student_mask * gt_binary)
     return (2. * intersection) / (np.sum(student_mask) + np.sum(gt_binary) + 1e-7)
 
-# --- 2. Page Config ---
+def get_base64_image(img):
+    buffered = BytesIO()
+    img.save(buffered, format="PNG")
+    return base64.b64encode(buffered.getvalue()).decode()
+
+# --- 2. App UI ---
 st.set_page_config(page_title="Tumor Quiz", layout="centered")
 st.title("Quick Machine: Tumor Segmentation Quiz")
 
-# Filenames from your repo
 IMG_FILE = "TCGA_CS_4944_20010208_1.tif"
 MSK_FILE = "TCGA_CS_4944_20010208_10_mask.tif"
 
-# --- 3. Robust Image Loader ---
-@st.cache_data
-def get_processed_images(img_path, msk_path):
-    """Loads and standardizes images for the canvas."""
-    # Forced conversion to 8-bit RGB is mandatory for .tif files
-    img = Image.open(img_path).convert("RGB").resize((256, 256))
-    msk = Image.open(msk_path).convert("RGB").resize((256, 256))
-    return img, msk
-
 if not os.path.exists(IMG_FILE):
-    st.error(f"Cannot find {IMG_FILE} in repository root.")
+    st.error("Image not found in main branch!")
 else:
-    bg_image, gt_mask = get_processed_images(IMG_FILE, MSK_FILE)
-
+    # Process images
+    raw_bg = Image.open(IMG_FILE).convert("RGB").resize((256, 256))
+    gt_mask = Image.open(MSK_FILE).convert("RGB").resize((256, 256))
+    
+    # NEW: Create a background color if the image fails
+    # This helps debug if the canvas itself is loading
+    
     st.subheader("1. Outline the tumor boundary")
-    st.write("If you see a white box, try a 'Hard Refresh' (Ctrl+Shift+R).")
-
-    # Use a unique key based on a counter to force re-renders
-    if "canvas_key" not in st.session_state:
-        st.session_state.canvas_key = 0
-
-    if st.button("Reset Canvas"):
-        st.session_state.canvas_key += 1
-        st.rerun()
-
+    
     # THE CANVAS
     canvas_result = st_canvas(
         fill_color="rgba(255, 165, 0, 0.3)",
         stroke_width=2,
         stroke_color="#FFFFFF",
-        background_image=bg_image, # Passing processed PIL image
+        background_image=raw_bg, # Passing PIL directly again with a fresh resize
         drawing_mode="polygon",
-        key=f"canvas_v{st.session_state.canvas_key}",
+        key="final_v1",
         height=256,
         width=256,
-        update_streamlit=True
+        update_streamlit=True,
     )
 
+    if st.button("Reset"): st.rerun()
+
     if canvas_result.json_data and len(canvas_result.json_data["objects"]) > 0:
-        st.divider()
         if st.button("Submit My Answer"):
             score = calculate_dice(canvas_result.image_data, gt_mask)
-            
+            st.divider()
             c1, c2 = st.columns(2)
             c1.metric("Dice Score", f"{score:.2%}")
-            c2.image(gt_mask, caption="Expert Mask", use_container_width=True)
-            
-            if score > 0.85:
-                st.success("Expert Level Match!")
-            else:
-                st.warning("Outline does not match expert ground truth.")
+            c2.image(gt_mask, caption="Expert Mask")
+
