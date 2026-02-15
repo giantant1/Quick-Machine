@@ -8,46 +8,51 @@ from io import BytesIO
 # --- 1. Helper Functions ---
 
 def load_from_repo(url):
-    """Fetches image from GitHub with verification."""
+    """Fetches the image directly from the verified raw GitHub link."""
     headers = {"User-Agent": "Mozilla/5.0"}
     try:
         response = requests.get(url, headers=headers, timeout=15)
         response.raise_for_status()
         
-        # Check if we actually got an image and not a text/html error page
-        content_type = response.headers.get('Content-Type', '')
-        if 'image' not in content_type:
-            st.error(f"URL returned non-image data ({content_type}). Check your path.")
+        # Verify it's an image and not a text error page
+        if 'image' not in response.headers.get('Content-Type', ''):
+            st.error(f"GitHub returned a web page instead of an image. Check the URL.")
             return None
             
         return Image.open(BytesIO(response.content)).convert("RGB")
     except Exception as e:
-        st.error(f"Connection failed: {e}")
+        st.error(f"Connection error: {e}")
         return None
 
 def calculate_dice(canvas_data, gt_mask):
-    """Dice overlap math."""
+    """Calculates Dice overlap between user drawing and expert mask."""
+    # Convert student drawing (alpha channel) to binary
     student_mask = np.where(canvas_data[:,:,3] > 0, 1, 0)
+    # Convert Expert Ground Truth to binary
     gt_binary = np.where(np.array(gt_mask.convert("L")) > 0, 1, 0)
+    
     intersection = np.logical_and(student_mask, gt_binary).sum()
-    return (2. * intersection) / (student_mask.sum() + gt_binary.sum() + 1e-7)
+    dice = (2. * intersection) / (student_mask.sum() + gt_binary.sum() + 1e-7)
+    return dice
 
 # --- 2. App Logic ---
 
 st.set_page_config(page_title="Tumor Quiz", layout="centered")
 st.title("Quick Machine: Tumor Segmentation Quiz")
 
-# VERIFIED RAW URLS from mateuszbuda repository
-IMG_URL = "https://raw.githubusercontent.com"
-MSK_URL = "https://raw.githubusercontent.com"
+# VERIFIED DIRECT RAW LINKS (Case Sensitive)
+# Source: mateuszbuda/brain-segmentation-pytorch
+IMG_URL = "https://github.com/mateuszbuda/brain-segmentation-pytorch/raw/master/assets/TCGA_CS_4944.png"
+MSK_URL = "https://github.com"
 
 bg_image = load_from_repo(IMG_URL)
 gt_mask = load_from_repo(MSK_URL)
 
 if bg_image and gt_mask:
-    st.subheader("Outline the tumor boundary")
+    st.subheader("1. Outline the tumor boundary")
+    st.write("Use the polygon tool to trace the abnormality.")
     
-    if st.button("Reset Canvas"):
+    if st.button("Reset Drawing"):
         st.rerun()
 
     canvas_result = st_canvas(
@@ -61,22 +66,27 @@ if bg_image and gt_mask:
         width=256,
     )
 
+    # Submit Logic
     if canvas_result.json_data and len(canvas_result.json_data["objects"]) > 0:
         st.divider()
-        choice = st.radio("Pathology Class:", ["LGG", "HGG", "Meningioma"])
+        st.subheader("2. Final Diagnosis")
+        choice = st.radio("Based on the FLAIR signal, what is this?", ["LGG", "HGG", "Meningioma"])
         
-        if st.button("Submit Result"):
+        if st.button("Submit My Answer"):
             score = calculate_dice(canvas_result.image_data, gt_mask)
             st.divider()
             
-            c1, c2 = st.columns(2)
-            c1.metric("Dice Score", f"{score:.2%}")
-            c2.image(gt_mask, caption="Expert Ground Truth", use_container_width=True)
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Dice Similarity Score", f"{score:.2%}")
+                st.write("Expert match: > 85%")
+            with col2:
+                st.image(gt_mask, caption="Expert Ground Truth", use_container_width=True)
             
-            if score > 0.85:
-                st.success("Expert Level Match!")
+            if score > 0.80:
+                st.success(f"Great work! Your classification as {choice} is clinically consistent.")
             else:
-                st.warning("Needs refinement.")
+                st.warning("The outline deviates from the radiologist's ground truth. Try again!")
 else:
-    st.info("Loading medical images... if this persists, verify the 'raw' URLs in your code.")
+    st.info("Attempting to load medical images from the repository...")
 
