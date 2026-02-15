@@ -7,27 +7,21 @@ from io import BytesIO
 
 # --- 1. Helper Functions ---
 
-def load_from_repo(image_name):
+def load_from_repo(image_url):
     """
-    Fetches a clean 2D slice or mask using the direct raw GitHub URL.
-    Fixed URL logic to ensure a proper slash between domain and path.
+    Fetches the image directly from the Mateusz Buda GitHub assets.
     """
-    # Use the official 'raw' subdomain for the Buda repository assets
-    base_url = "https://raw.githubusercontent.com"
-    file_url = f"{base_url}/{image_name}"
-    
     headers = {"User-Agent": "Mozilla/5.0"}
-    
     try:
-        response = requests.get(file_url, headers=headers, timeout=10)
+        response = requests.get(image_url, headers=headers, timeout=15)
         response.raise_for_status() 
         return Image.open(BytesIO(response.content)).convert("RGB")
     except Exception as e:
-        st.error(f"Error loading {image_name}: {e}")
+        st.error(f"Failed to reach GitHub: {e}")
         return None
 
 def calculate_dice(canvas_data, gt_mask):
-    """Calculates the Dice Similarity Coefficient (DSC)."""
+    """Calculates the overlap (Dice Score) between student and expert."""
     student_mask = np.where(canvas_data[:,:,3] > 0, 1, 0)
     gt_array = np.array(gt_mask.convert("L"))
     gt_binary = np.where(gt_array > 0, 1, 0)
@@ -40,21 +34,20 @@ def calculate_dice(canvas_data, gt_mask):
 
 st.set_page_config(page_title="Tumor Quiz", layout="centered")
 st.title("Quick Machine: Tumor Segmentation Quiz")
-st.info("Aligning with BraTS standards: Use the polygon tool to outline the tumor core.")
+st.info("BraTS Standard: Use the polygon tool to outline the tumor core.")
 
-if 'quiz_stage' not in st.session_state:
-    st.session_state.quiz_stage = "outline"
+# DIRECT LINKS to the Buda Repo Assets
+IMAGE_URL = "https://raw.githubusercontent.com"
+MASK_URL = "https://raw.githubusercontent.com"
 
 # Fetch images
-bg_image = load_from_repo("TCGA_CS_4944.png")
-gt_mask = load_from_repo("TCGA_CS_4944_mask.png")
+bg_image = load_from_repo(IMAGE_URL)
+gt_mask = load_from_repo(MASK_URL)
 
 if bg_image:
     st.subheader("1. Outline the tumor boundary")
     
-    # Reset Logic
     if st.button("Clear Drawing"):
-        st.session_state.quiz_stage = "outline"
         st.rerun()
 
     canvas_result = st_canvas(
@@ -69,34 +62,28 @@ if bg_image:
         display_toolbar=True
     )
 
+    # Logic to move from Stage 1 to 2
     if canvas_result.json_data and len(canvas_result.json_data["objects"]) > 0:
-        if st.session_state.quiz_stage == "outline":
-            st.session_state.quiz_stage = "classify"
-            
         st.divider()
         st.subheader("2. Classify the pathology")
-        choice = st.radio("Based on the FLAIR signal, what is this?", 
+        choice = st.radio("What is your diagnosis?", 
                           ["LGG (Lower-Grade Glioma)", "HGG (High-Grade Glioma)", "Meningioma"])
         
         if st.button("Submit My Answer"):
-            st.session_state.quiz_stage = "reveal"
-
-    if st.session_state.quiz_stage == "reveal":
-        st.divider()
-        score = calculate_dice(canvas_result.image_data, gt_mask)
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            st.metric("Your Dice Score", f"{score:.2%}")
-            st.write("Expert threshold: > 0.85")
-        
-        with col2:
-            st.image(gt_mask, caption="Expert Ground Truth", use_container_width=True)
-        
-        if score > 0.80:
-            st.success(f"Excellent! Your identification as {choice} matches clinical data.")
-        else:
-            st.warning("Your segmentation boundary needs adjustment. Compare your result with the expert mask.")
+            score = calculate_dice(canvas_result.image_data, gt_mask)
+            
+            st.divider()
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Your Dice Score", f"{score:.2%}")
+                st.write("Expert threshold: > 0.85")
+            
+            with col2:
+                st.image(gt_mask, caption="Expert Ground Truth", use_container_width=True)
+            
+            if score > 0.80:
+                st.success(f"Excellent! Your identification as {choice} matches clinical data.")
+            else:
+                st.warning("Your segmentation boundary needs adjustment.")
 else:
-    st.warning("Waiting for medical images to load from repository...")
-
+    st.warning("Waiting for medical images to load from GitHub... Check your internet connection.")
