@@ -99,3 +99,4 @@ if os.path.exists(img_path):
 # ---------------------------------------------------------
 st.divider()
 st.caption("Submitted for the MedGemma Impact Challenge. Built for Medical Education.")
+
