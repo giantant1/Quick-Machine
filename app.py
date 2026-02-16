@@ -63,4 +63,54 @@ if os.path.exists(img_path):
             stroke_width=5,
             stroke_color="#FFFFFF",
             background_image=display_np,     # FIXED
+            drawing_mode="freedraw",
+            key=f"canvas_{selected_file}",   # refreshes per case
+            height=display_img.height,
+            width=display_img.width,
+            update_streamlit=True
+        )
+
+        if st.button("Reset Scan"):
+            st.rerun()
+
+    # -----------------------------------------------------
+    # RIGHT COLUMN — AI ANALYSIS
+    # -----------------------------------------------------
+    with col2:
+        st.subheader("MedSigLIP AI Review")
+        st.write("Run the simulated zero‑shot classifier.")
+
+        if st.button("Run AI Analysis"):
+            st.info("Generating MedSigLIP Image Embeddings...")
+
+            # Simple simulation for demo
+            fname = selected_file.lower()
+
+            if "glioma" in fname:
+                scores = {"Glioma": 0.96, "Meningioma": 0.02, "Other": 0.02}
+            elif "meningioma" in fname:
+                scores = {"Meningioma": 0.91, "Glioma": 0.07, "Other": 0.02}
+            elif "pituitary" in fname:
+                scores = {"Pituitary": 0.94, "Other": 0.06}
+            else:
+                scores = {"Pathology": "Standard Clinical Signature Detected"}
+
+            # Display results
+            if isinstance(scores, dict):
+                for label, val in scores.items():
+                    st.write(f"**{label}**")
+                    if isinstance(val, float):
+                        st.progress(val)
+                    else:
+                        st.write(val)
+
+            st.success("Analysis Complete")
+            st.markdown("**Educational Insight:** MedSigLIP identifies visual tokens associated with clinical reports.")
+
+# ---------------------------------------------------------
+# FOOTER
+# ---------------------------------------------------------
+st.divider()
+st.caption("Built for Medical Education • MedSigLIP Neuro‑Tutor")
+
 
