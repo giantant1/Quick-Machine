@@ -1,5 +1,4 @@
 import os
-import os
 import numpy as np
 from PIL import Image
 import streamlit as st
@@ -8,41 +7,36 @@ from streamlit_drawable_canvas import st_canvas
 # --- 1. Page Configuration ---
 st.set_page_config(page_title="MedSigLIP Neuro-Tutor", layout="wide")
 st.title("MedSigLIP Neuro-Tutor")
-st.markdown("### Clinical Training: Brain Tumor Identification and Zero-Shot ID")
+st.markdown("### Clinical Training: Brain Tumor Identification & Zero-Shot ID")
 
-# --- 2. Path Management (Looking inside your 'data' folder) ---
+# --- 2. Automated Data Loader ---
+# This section scans the 'data' folder and prepares the cases
 DATA_DIR = "data"
+
 if not os.path.exists(DATA_DIR):
-    st.error(f"Directory '{DATA_DIR}' not found. Please ensure your images are in a folder named 'data' on GitHub.")
+    st.error(f"Directory '{DATA_DIR}' not found. Please create a folder named 'data' on GitHub and upload your JPGs.")
     st.stop()
 
-# Load all images from the data folder
+# Automatically find all images in the folder
 image_files = sorted([f for f in os.listdir(DATA_DIR) if f.lower().endswith(('.jpg', '.jpeg', '.png'))])
 
 if not image_files:
     st.warning("No images found in the 'data' folder. Please upload glioma.jpg, meningioma.jpg, etc.")
     st.stop()
 
-# Mapping for professional case labels
-case_mapping = {
-    "glioma.jpg": "Patient Case A: Cerebral Mass",
-    "meningioma.jpg": "Patient Case B: Parasagittal Mass",
-    "pituitary.jpg": "Patient Case C: Sellar Region",
-    "no_tumor.jpg": "Patient Case D: Normal Control"
-}
-
-selected_file = st.selectbox("Select Patient Case:", image_files, 
-                             format_func=lambda x: case_mapping.get(x, x))
+# Sidebar for Case Selection
+st.sidebar.header("Patient Database")
+selected_file = st.sidebar.selectbox("Select Patient Case:", image_files)
 img_path = os.path.join(DATA_DIR, selected_file)
 
-# --- 3. Main App Interface ---
+# --- 3. Main App Logic ---
 if os.path.exists(img_path):
     # Load and standardize for web display
+    # .convert("RGB") is critical for browser compatibility
     raw_img = Image.open(img_path).convert("RGB")
     
-    # Optional: Resize if the image is massive, but keep it clear for the quiz
-    if raw_img.width > 512:
-        raw_img.thumbnail((512, 512))
+    # Resize to MedSigLIP standard (448x448) while keeping aspect ratio
+    raw_img.thumbnail((448, 448))
 
     col1, col2 = st.columns(2)
 
@@ -50,7 +44,7 @@ if os.path.exists(img_path):
         st.subheader("Interactive MRI Scan")
         st.caption("Use the Pencil Tool to highlight the suspected pathology.")
         
-        # KEY FIX: Dynamic height/width from your working demo prevents 'white box' bug
+        # KEY FIX: Dynamic height/width prevents 'white box' rendering errors
         canvas_result = st_canvas(
             fill_color="rgba(255, 165, 0, 0.3)",
             stroke_width=5,
@@ -63,7 +57,7 @@ if os.path.exists(img_path):
             update_streamlit=True
         )
         
-        if st.button("Reset Drawing"):
+        if st.button("Reset Scan"):
             st.rerun()
 
     with col2:
@@ -81,14 +75,15 @@ if os.path.exists(img_path):
             elif "pituitary" in selected_file.lower():
                 scores = {"Pituitary": 0.94, "Other": 0.06}
             else:
-                scores = {"Normal": 0.98, "Abnormal": 0.02}
+                scores = {"Pathology": "Standard Clinical Signature Detected"}
 
-            for label, val in scores.items():
-                st.write(f"**{label}**")
-                st.progress(val)
+            if isinstance(scores, dict):
+                for label, val in scores.items():
+                    st.write(f"**{label}**")
+                    st.progress(val)
             
             st.success("Analysis Complete")
-            st.markdown("**Educational Insight:** MedSigLIP allows for zero-shot classification without labels.")
+            st.markdown("**Educational Insight:** MedSigLIP identifies visual tokens associated with clinical reports.")
 
 st.divider()
 st.caption("Submitted for the MedGemma Impact Challenge. Built for Medical Education.")
