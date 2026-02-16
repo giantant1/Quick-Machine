@@ -79,24 +79,5 @@ if os.path.exists(img_path):
                 scores = {"Glioma": 0.96, "Meningioma": 0.02, "Other": 0.02}
             elif "meningioma" in fname:
                 scores = {"Meningioma": 0.91, "Glioma": 0.07, "Other": 0.02}
-            elif "pituitary" in fname:
-                scores = {"Pituitary": 0.94, "Other": 0.06}
-            else:
-                scores = {"Pathology": "Standard Clinical Signature Detected"}
 
-            for label, val in scores.items():
-                st.write(f"**{label}**")
-                if isinstance(val, float):
-                    st.progress(val)
-                else:
-                    st.write(val)
-
-            st.success("Analysis Complete")
-            st.markdown("**Educational Insight:** MedSigLIP identifies visual tokens associated with clinical reports.")
-
-# ---------------------------------------------------------
-# 4. FOOTER
-# ---------------------------------------------------------
-st.divider()
-st.caption("Submitted for the MedGemma Impact Challenge. Built for Medical Education.")
 
