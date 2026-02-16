@@ -1,7 +1,8 @@
 streamlit==1.40.0
-streamlit-drawable-canvas==0.9.3
+streamlit-drawable-canvas
 numpy
 Pillow
+
 
 
 
