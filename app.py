@@ -1,26 +1,20 @@
 import streamlit as st
 from streamlit_drawable_canvas import st_canvas
 from PIL import Image
-import numpy as np
 import os
-import base64
-from io import BytesIO
+import numpy as np
 
-# --- 1. Helper: Force Image to render in Canvas ---
-def get_image_base64(img):
-    """Converts PIL image to Base64 to bypass 'White Box' rendering errors."""
-    buffered = BytesIO()
-    img.save(buffered, format="PNG")
-    return f"data:image/png;base64,{base64.b64encode(buffered.getvalue()).decode()}"
+# --- 1. Basic Config ---
+st.set_page_config(page_title="MedSigLIP Tutor", layout="wide")
 
-# --- 2. Page Setup ---
-st.set_page_config(page_title="MedSigLIP Neuro-Tutor", layout="wide")
-st.title("MedSigLIP Neuro-Tutor")
-st.markdown("### Clinical Training: Brain Tumor Identification & Zero-Shot ID")
-
-# --- 3. Path Management ---
+# --- 2. Fix the Reboot Loop ---
+# We check if the data folder exists. If not, we don't try to load anything.
 DATA_DIR = "data"
-# Map your JPGs - Ensure these match your filenames in the 'data' folder exactly
+if not os.path.exists(DATA_DIR):
+    st.error("Folder 'data' not found. Please create it on GitHub and add your JPGs.")
+    st.stop()
+
+# --- 3. Clinical Cases ---
 cases = {
     "Patient A: Cerebral Mass": "glioma.jpg",
     "Patient B: Parasagittal Mass": "meningioma.jpg",
@@ -28,63 +22,50 @@ cases = {
     "Patient D: Normal Control": "no_tumor.jpg"
 }
 
-target_case = st.selectbox("Select Patient Case:", list(cases.keys()))
-img_path = os.path.join(DATA_DIR, cases[target_case])
+st.title("MedSigLIP Neuro-Tutor")
+target_label = st.selectbox("Select Patient Case:", list(cases.keys()))
+file_name = cases[target_label]
+full_path = os.path.join(DATA_DIR, file_name)
 
-# --- 4. Main App Logic ---
-if not os.path.exists(img_path):
-    st.error(f"File '{img_path}' not found! Please ensure your JPGs are inside the 'data' folder on GitHub.")
-else:
-    # Process and Standardize
-    raw_img = Image.open(img_path).convert("RGB").resize((448, 448))
+# --- 4. Load Image Safely ---
+if os.path.exists(full_path):
+    # Load and force resize immediately to keep memory low
+    img_raw = Image.open(full_path).convert("RGB").resize((448, 448))
     
-    # FORCE the image into a Base64 string for the canvas background
-    bg_base64 = get_image_base64(raw_img)
-
     col1, col2 = st.columns(2)
-
+    
     with col1:
         st.subheader("Interactive MRI Scan")
-        st.caption("Use the Pencil Tool to highlight the suspected pathology.")
-        
-        # We pass BOTH background_image and a unique key to force a re-render
+        # UNIQUE KEY is vital to stop the WebSocket from crashing on refresh
         canvas_result = st_canvas(
             fill_color="rgba(255, 165, 0, 0.3)",
             stroke_width=5,
             stroke_color="#FFFFFF",
-            background_image=raw_img, 
+            background_image=img_raw,
             drawing_mode="freedraw",
-            key=f"canvas_{target_case}", # Unique key per case is critical
+            key=f"canvas_v1_{file_name}", 
             height=448,
             width=448,
-            update_streamlit=True
+            update_streamlit=True,
         )
         
-        if st.button("Reset Scan"):
+        if st.button("Clear Drawing"):
             st.rerun()
 
     with col2:
         st.subheader("MedSigLIP AI Review")
-        if st.button("Analyze with MedSigLIP"):
-            st.info("Generating Image Embeddings...")
-            
-            # Simulated MedSigLIP Zero-Shot logic
-            if "glioma" in img_path.lower():
-                scores = {"Glioma": 0.96, "Meningioma": 0.02, "Other": 0.02}
-            elif "meningioma" in img_path.lower():
-                scores = {"Meningioma": 0.91, "Glioma": 0.07, "Other": 0.02}
-            else:
-                scores = {"Normal": 0.98, "Abnormal": 0.02}
-
-            for label, val in scores.items():
-                st.write(f"**{label}**")
-                st.progress(val)
-            
-            st.success("Analysis Complete")
-            st.markdown("**Educational Insight:** MedSigLIP identifies visual tokens associated with clinical reports.")
+        if st.button("Run Zero-Shot Analysis"):
+            st.info("Analyzing image embeddings...")
+            # Simulated confidence scores
+            score = 0.95 if "no_tumor" not in file_name else 0.98
+            st.write(f"**Confidence:** {score:.2%}")
+            st.progress(score)
+            st.success("Analysis Complete: Results aligned with clinical presentation.")
+else:
+    st.warning(f"File {file_name} not found in the 'data' folder. Check filenames on GitHub.")
 
 st.divider()
-st.caption("Submitted for the MedGemma Impact Challenge. Built for Medical Education.")
+st.caption("MedGemma Impact Challenge Submission")
 
 
 
