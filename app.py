@@ -100,10 +100,4 @@ if os.path.exists(img_path):
 st.divider()
 st.caption("Submitted for the MedGemma Impact Challenge. Built for Medical Education.")
 
-# ---------------------------------------------------------
-# SAFE PLACEHOLDER (REPLACES EDGE-INJECTED METADATA)
-# ---------------------------------------------------------
-# The original Edge metadata injected here was invalid Python
-# and caused the app to crash. This safe placeholder prevents
-# future errors and keeps the file valid.
-edge_all_open_tabs = []
+
