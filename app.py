@@ -37,13 +37,12 @@ img_path = os.path.join(DATA_DIR, selected_file)
 # 3. MAIN APP LOGIC
 # ---------------------------------------------------------
 if os.path.exists(img_path):
-    # 1. Load the image as a PIL Image object
     raw_img = Image.open(img_path).convert("RGB")
 
-    # 2. Resize for display (standardize to 448px for MedSigLIP alignment)
-    # We keep this as a PIL Image object.
     display_img = raw_img.copy()
     display_img.thumbnail((448, 448))
+
+    display_np = np.array(display_img)
 
     col1, col2 = st.columns(2)
 
@@ -52,13 +51,11 @@ if os.path.exists(img_path):
         st.subheader("Interactive MRI Scan")
         st.caption("Use the Pencil Tool to highlight the suspected pathology.")
 
-        # FIXED: Pass the PIL Image 'display_img' directly.
-        # This prevents the "Truth value of an array is ambiguous" ValueError.
         canvas_result = st_canvas(
             fill_color="rgba(255, 165, 0, 0.3)",
             stroke_width=5,
             stroke_color="#FFFFFF",
-            background_image=display_img, 
+            background_image=display_np,
             drawing_mode="freedraw",
             key=f"canvas_{selected_file}",
             height=display_img.height,
@@ -103,4 +100,10 @@ if os.path.exists(img_path):
 st.divider()
 st.caption("Submitted for the MedGemma Impact Challenge. Built for Medical Education.")
 
-
+# ---------------------------------------------------------
+# SAFE PLACEHOLDER (REPLACES EDGE-INJECTED METADATA)
+# ---------------------------------------------------------
+# The original Edge metadata injected here was invalid Python
+# and caused the app to crash. This safe placeholder prevents
+# future errors and keeps the file valid.
+edge_all_open_tabs = []
