@@ -7,9 +7,9 @@ from streamlit_drawable_canvas import st_canvas
 # ---------------------------------------------------------
 # 1. PAGE CONFIG
 # ---------------------------------------------------------
-st.set_page_config(page_title="MedSigLIP Neuro‑Tutor", layout="wide")
-st.title("MedSigLIP Neuro‑Tutor")
-st.markdown("### Clinical Training: Brain Tumor Identification & Zero‑Shot Review")
+st.set_page_config(page_title="MedSigLIP Neuro-Tutor", layout="wide")
+st.title("MedSigLIP Neuro-Tutor")
+st.markdown("### Clinical Training: Brain Tumor Identification & Zero-Shot ID")
 
 # ---------------------------------------------------------
 # 2. DATA LOADING
@@ -17,29 +17,27 @@ st.markdown("### Clinical Training: Brain Tumor Identification & Zero‑Shot Rev
 DATA_DIR = "data"
 
 if not os.path.exists(DATA_DIR):
-    st.error("Folder 'data/' not found. Create it and add MRI JPG/PNG files.")
+    st.error("Directory 'data' not found. Create a folder named 'data' and upload your JPG/PNG MRI scans.")
     st.stop()
 
-image_files = sorted([
+image_files = sorted(
     f for f in os.listdir(DATA_DIR)
     if f.lower().endswith((".jpg", ".jpeg", ".png"))
-])
+)
 
 if not image_files:
-    st.warning("No images found in 'data/'. Upload glioma.jpg, meningioma.jpg, etc.")
+    st.warning("No images found in 'data'. Please upload files like glioma.jpg, meningioma.jpg, pituitary.jpg, etc.")
     st.stop()
 
-# Sidebar
 st.sidebar.header("Patient Database")
 selected_file = st.sidebar.selectbox("Select Patient Case:", image_files)
 img_path = os.path.join(DATA_DIR, selected_file)
 
 # ---------------------------------------------------------
-# 3. MAIN APP
+# 3. MAIN APP LOGIC
 # ---------------------------------------------------------
 if os.path.exists(img_path):
-
-    # Load image safely
+    # Load and standardize for web display
     raw_img = Image.open(img_path).convert("RGB")
 
     # Create a resized copy for display
@@ -51,66 +49,18 @@ if os.path.exists(img_path):
 
     col1, col2 = st.columns(2)
 
-    # -----------------------------------------------------
-    # LEFT COLUMN — INTERACTIVE MRI CANVAS
-    # -----------------------------------------------------
+    # ---------------- LEFT: INTERACTIVE MRI ----------------
     with col1:
         st.subheader("Interactive MRI Scan")
-        st.caption("Use the pencil tool to highlight suspected pathology.")
+        st.caption("Use the Pencil Tool to highlight the suspected pathology.")
 
         canvas_result = st_canvas(
             fill_color="rgba(255, 165, 0, 0.3)",
             stroke_width=5,
             stroke_color="#FFFFFF",
-            background_image=display_np,     # FIXED
+            background_image=display_np,
             drawing_mode="freedraw",
-            key=f"canvas_{selected_file}",   # refreshes per case
+            key=f"canvas_{selected_file}",
             height=display_img.height,
             width=display_img.width,
-            update_streamlit=True
-        )
-
-        if st.button("Reset Scan"):
-            st.rerun()
-
-    # -----------------------------------------------------
-    # RIGHT COLUMN — AI ANALYSIS
-    # -----------------------------------------------------
-    with col2:
-        st.subheader("MedSigLIP AI Review")
-        st.write("Run the simulated zero‑shot classifier.")
-
-        if st.button("Run AI Analysis"):
-            st.info("Generating MedSigLIP Image Embeddings...")
-
-            # Simple simulation for demo
-            fname = selected_file.lower()
-
-            if "glioma" in fname:
-                scores = {"Glioma": 0.96, "Meningioma": 0.02, "Other": 0.02}
-            elif "meningioma" in fname:
-                scores = {"Meningioma": 0.91, "Glioma": 0.07, "Other": 0.02}
-            elif "pituitary" in fname:
-                scores = {"Pituitary": 0.94, "Other": 0.06}
-            else:
-                scores = {"Pathology": "Standard Clinical Signature Detected"}
-
-            # Display results
-            if isinstance(scores, dict):
-                for label, val in scores.items():
-                    st.write(f"**{label}**")
-                    if isinstance(val, float):
-                        st.progress(val)
-                    else:
-                        st.write(val)
-
-            st.success("Analysis Complete")
-            st.markdown("**Educational Insight:** MedSigLIP identifies visual tokens associated with clinical reports.")
-
-# ---------------------------------------------------------
-# FOOTER
-# ---------------------------------------------------------
-st.divider()
-st.caption("Built for Medical Education • MedSigLIP Neuro‑Tutor")
-
-
+            update_streamlit
