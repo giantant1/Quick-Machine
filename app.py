@@ -73,7 +73,7 @@ with col2:
 
 st.divider()
 st.caption("Submitted for the MedGemma Impact Challenge. Built for Medical Education.")
-)
+
 
 
 
