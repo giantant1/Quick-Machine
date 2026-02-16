@@ -6,8 +6,8 @@ import os
 
 # --- Page Configuration ---
 st.set_page_config(page_title="MedSigLIP Neuro-Tutor", layout="wide")
-st.title("🧠 MedSigLIP Neuro-Tutor")
-st.markdown("### Clinical Training: Brain Tumor Identification & Zero-Shot ID")
+st.title("MedSigLIP Neuro-Tutor")
+st.markdown("### Clinical Training: Brain Tumor Identification and Zero-Shot ID")
 
 # --- 1. Dataset Mapping ---
 # Maps the patient cases to the files you uploaded from the Nguyen repo
@@ -25,21 +25,21 @@ with st.sidebar:
     IMG_FILE = cases[target_case]
     
     st.divider()
-    st.info("**Impact Metric:** MedSigLIP 400M Vision Encoder used for Zero-Shot Verification.")
+    st.info("Impact Metric: MedSigLIP 400M Vision Encoder used for Zero-Shot Verification.")
 
 # --- 3. Main App Logic ---
 if not os.path.exists(IMG_FILE):
-    st.error(f"Missing File: '{IMG_FILE}'")
-    st.write("Please upload the 4 JPGs from the Nguyen repo to your GitHub root.")
+    st.error(f"Missing File: {IMG_FILE}")
+    st.write("Please upload the 4 JPGs from the repository to your GitHub root.")
 else:
     # MedSigLIP standard resolution is 448x448
     raw_img = Image.open(IMG_FILE).convert("RGB").resize((448, 448))
 
-    col1, col2 = st.columns([2, 1])
+    col1, col2 = st.columns(2)
 
     with col1:
         st.subheader("Interactive MRI Scan")
-        st.caption("Step 1: Use the **Pencil Tool** to highlight the suspected pathology.")
+        st.caption("Step 1: Use the Pencil Tool to highlight the suspected pathology.")
         
         canvas_result = st_canvas(
             fill_color="rgba(255, 165, 0, 0.3)",
@@ -82,12 +82,13 @@ else:
             st.markdown("""
             **Educational Insight:** 
             MedSigLIP identifies visual tokens associated with clinical reports. 
-            Ensure your drawing encompasses the hyperintense regions shown.
+            Ensure your drawing encompasses the hyperintense regions shown in the scan.
             """)
 
 # --- Footer for Competition ---
 st.divider()
 st.caption("Submitted for the MedGemma Impact Challenge. Built for Medical Education.")
+
 
 
 
